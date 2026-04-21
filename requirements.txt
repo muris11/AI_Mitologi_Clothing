@@ -1,0 +1,16 @@
+flask==3.0.0
+pandas==2.2.0
+scikit-learn==1.4.0
+flask-cors==4.0.0
+python-dotenv>=1.0.0
+waitress>=3.0.0
+schedule>=1.2.1
+requests>=2.31.0
+
+# Development & Testing
+pytest>=8.0.0
+pytest-cov>=4.1.0
+mypy>=1.8.0
+black>=24.1.0
+flake8>=7.0.0
+isort>=5.13.0
