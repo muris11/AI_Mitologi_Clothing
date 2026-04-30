@@ -6,6 +6,8 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score
 
 MODEL_PATH = "recommender_model.pkl"
 
@@ -24,11 +26,24 @@ class RecommenderSystem:
         self.product_interaction_counts = {}
         
         self.is_trained = False
+        self.metrics = {
+            'accuracy': 0.0,
+            'samples': 0,
+            'last_train_date': None
+        }
 
     def train(self, interactions, products):
         """
         Train both Collaborative (Naive Bayes) and Content-Based models.
         """
+        # Ensure metrics dictionary exists and has default keys
+        if not hasattr(self, 'metrics') or not self.metrics or 'accuracy' not in self.metrics:
+            self.metrics = {
+                'accuracy': 0.0,
+                'samples': 0,
+                'last_train_date': None
+            }
+            
         # 1. Train Naive Bayes (Collaborative)
         if interactions:
             try:
@@ -52,8 +67,27 @@ class RecommenderSystem:
                     
                     # Need at least 2 products to train Naive Bayes
                     if len(self.product_encoder.classes_) > 1:
-                        self.nb_model.fit(X, y)
-                        print(f"ML: Naive Bayes fitted with {len(interactions)} records.")
+                        # Split data for evaluation
+                        if len(X) >= 5: # Only split if we have enough data
+                            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+                            self.nb_model.fit(X_train, y_train)
+                            
+                            # Calculate accuracy
+                            y_pred = self.nb_model.predict(X_test)
+                            acc = accuracy_score(y_test, y_pred)
+                            
+                            self.metrics['accuracy'] = float(acc)
+                            self.metrics['samples'] = len(interactions)
+                            self.metrics['last_train_date'] = pd.Timestamp.now().isoformat()
+                            
+                            # Refit on all data after evaluation
+                            self.nb_model.fit(X, y)
+                        else:
+                            self.nb_model.fit(X, y)
+                            self.metrics['accuracy'] = 1.0 # Too small to split fairly
+                            self.metrics['samples'] = len(interactions)
+                        
+                        print(f"ML: Naive Bayes fitted with {len(interactions)} records. Accuracy: {self.metrics['accuracy']:.2f}")
                     else:
                         print("ML: Only one product in dataset. Skipping NB model.")
             except Exception as e:

@@ -108,7 +108,19 @@ def train():
 
 @app.route('/api/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'ok', 'trained': recommender.is_trained})
+    return jsonify({
+        'status': 'ok', 
+        'trained': recommender.is_trained,
+        'metrics': recommender.metrics if hasattr(recommender, 'metrics') else {}
+    })
+
+@app.route('/api/model/metrics', methods=['GET'])
+@require_api_key
+def get_metrics():
+    return jsonify({
+        'metrics': recommender.metrics if hasattr(recommender, 'metrics') else {},
+        'is_trained': recommender.is_trained
+    })
 
 if __name__ == '__main__':
     # Run on port 8001 to match Laravel config
