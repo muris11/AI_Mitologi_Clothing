@@ -22,7 +22,6 @@ class RecommenderSystem:
         self.content_matrix = None
         self.product_ids = []
         
-        # Cold-start fallback: track popular products by interaction count
         self.product_interaction_counts = {}
         
         self.is_trained = False
@@ -36,7 +35,6 @@ class RecommenderSystem:
         """
         Train both Collaborative (Naive Bayes) and Content-Based models.
         """
-        # Ensure metrics dictionary exists and has default keys
         if not hasattr(self, 'metrics') or not self.metrics or 'accuracy' not in self.metrics:
             self.metrics = {
                 'accuracy': 0.0,
@@ -44,15 +42,12 @@ class RecommenderSystem:
                 'last_train_date': None
             }
             
-        # 1. Train Naive Bayes (Collaborative)
         if interactions:
             try:
                 df = pd.DataFrame(interactions)
                 
-                # Popular products fallback
                 self.product_interaction_counts = df['product_id'].value_counts().to_dict()
                 
-                # Filter out interactions where user or product is missing
                 df = df.dropna(subset=['user_id', 'product_id'])
                 
                 if not df.empty:
@@ -65,14 +60,11 @@ class RecommenderSystem:
                     X = self.one_hot.fit_transform(user_indices.reshape(-1, 1))
                     y = product_indices
                     
-                    # Need at least 2 products to train Naive Bayes
                     if len(self.product_encoder.classes_) > 1:
-                        # Split data for evaluation
                         if len(X) >= 5: # Only split if we have enough data
                             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
                             self.nb_model.fit(X_train, y_train)
                             
-                            # Calculate accuracy
                             y_pred = self.nb_model.predict(X_test)
                             acc = accuracy_score(y_test, y_pred)
                             
@@ -80,7 +72,6 @@ class RecommenderSystem:
                             self.metrics['samples'] = len(interactions)
                             self.metrics['last_train_date'] = pd.Timestamp.now().isoformat()
                             
-                            # Refit on all data after evaluation
                             self.nb_model.fit(X, y)
                         else:
                             self.nb_model.fit(X, y)
@@ -93,13 +84,11 @@ class RecommenderSystem:
             except Exception as e:
                 print(f"ML Training Error (Collaborative): {e}")
         
-        # 2. Train Content-Based (Product-Product)
         if products:
             try:
                 df_products = pd.DataFrame(products)
                 self.product_ids = df_products['id'].tolist()
                 
-                # Combine features for TF-IDF
                 df_products['content'] = (
                     df_products['title'].fillna('') + " " + 
                     df_products['description'].fillna('') + " " + 
@@ -128,13 +117,11 @@ class RecommenderSystem:
             user_idx = self.user_encoder.transform([user_id])
             X_new = self.one_hot.transform(user_idx.reshape(-1, 1))
             
-            # Check if model is fitted
             if not hasattr(self.nb_model, 'classes_'):
                 return []
                 
             probs = self.nb_model.predict_proba(X_new)[0]
             
-            # Get indices of top N products
             top_indices = probs.argsort()[-limit:][::-1]
             
             top_products = self.product_encoder.inverse_transform(top_indices)
@@ -154,10 +141,8 @@ class RecommenderSystem:
         try:
             idx = self.product_ids.index(product_id)
             
-            # Compute similarity with all other products
             sim_scores = cosine_similarity(self.content_matrix[idx], self.content_matrix).flatten()
             
-            # Get indices of top similar products (excluding itself)
             top_indices = sim_scores.argsort()[-(limit+1):-1][::-1]
             
             related_ids = [self.product_ids[i] for i in top_indices]

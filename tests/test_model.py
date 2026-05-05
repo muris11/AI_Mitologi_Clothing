@@ -32,7 +32,6 @@ class TestRecommenderSystem:
         """Test training with no data."""
         recommender.train([], [])
         assert recommender.is_trained
-        # Should handle gracefully without errors
 
     def test_train_with_interactions(self, recommender):
         """Test collaborative filtering training."""
@@ -105,7 +104,6 @@ class TestRecommenderSystem:
         ]
         recommender.train(interactions, [])
         
-        # User 999 doesn't exist
         result = recommender.predict_user_products(999, limit=5)
         assert result == []
 
@@ -116,39 +114,31 @@ class TestRecommenderSystem:
         ]
         recommender.train([], products)
         
-        # Product 999 doesn't exist
         result = recommender.predict_related_products(999, limit=5)
         assert result == []
 
     def test_save_and_load_model(self, recommender, tmp_path):
         """Test model persistence."""
-        # Setup
         interactions = [{'user_id': 1, 'product_id': 101}]
         products = [{'id': 101, 'title': 'Test', 'description': 'Test', 'category': 'Test'}]
         recommender.train(interactions, products)
         
-        # Use temp file as model path
         test_model_file = str(tmp_path / 'test_model.pkl')
         
-        # Patch MODEL_PATH for this test
         import model
         original_path = model.MODEL_PATH
         model.MODEL_PATH = test_model_file
         
         try:
-            # Save
             recommender.save_model()
             
-            # Verify file was created
             assert os.path.exists(test_model_file), "Model file should be created"
             
-            # Load
             loaded = RecommenderSystem.load_model()
             assert loaded.is_trained, "Loaded model should be trained"
             assert len(loaded.product_ids) == 1, "Should have 1 product"
             assert 101 in loaded.product_ids, "Product 101 should be present"
         finally:
-            # Restore original path
             model.MODEL_PATH = original_path
 
 
@@ -196,7 +186,6 @@ class TestTrainJob:
         """Test successful training job."""
         from train_job import run_train_job
         
-        # Mock successful response
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -219,7 +208,6 @@ class TestTrainJob:
         """Test training job handles API failure."""
         from train_job import run_train_job
         
-        # Mock failed response
         mock_response = Mock()
         mock_response.status_code = 500
         mock_get.return_value = mock_response
@@ -267,10 +255,8 @@ class TestSecurity:
         """Test API key validation logic."""
         from app import API_KEY
         
-        # Test with valid key
         response = client.get('/api/recommendations/user/1', 
                               headers={'X-API-Key': API_KEY})
-        # Should not return 401 (may return other status based on model state)
         assert response.status_code != 401, "Valid API key should not be rejected"
 
     def test_api_key_validation_invalid(self, client):
@@ -299,17 +285,14 @@ class TestErrorHandling:
         """Test limit parsing with valid values."""
         from app import API_KEY
         
-        # Test with valid limit parameter
         response = client.get(f'/api/recommendations/user/1?limit=10',
                               headers={'X-API-Key': API_KEY})
-        # Should not return 400 for valid limit
         assert response.status_code != 400, "Valid limit should not return 400"
 
     def test_parse_limit_invalid(self, client):
         """Test limit parsing with invalid values."""
         from app import API_KEY
         
-        # Test with invalid limit parameter
         response = client.get(f'/api/recommendations/user/1?limit=invalid',
                               headers={'X-API-Key': API_KEY})
         assert response.status_code == 400, "Invalid limit should return 400"
@@ -321,7 +304,6 @@ class TestErrorHandling:
         """Test limit parsing with out of range values."""
         from app import API_KEY
         
-        # Test with limit too high
         response = client.get(f'/api/recommendations/user/1?limit=999',
                               headers={'X-API-Key': API_KEY})
         assert response.status_code == 400, "Out of range limit should return 400"

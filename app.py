@@ -7,12 +7,9 @@ from model import RecommenderSystem
 
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
-# Restrict CORS to frontend and backend origins (safe default if env var missing).
-# Defaults cover localhost and private LAN ranges so IP changes don't require code edits.
 allowed_origins_env = os.environ.get('ALLOWED_ORIGINS')
 if allowed_origins_env:
     allowed_origins = [origin.strip() for origin in allowed_origins_env.split(',') if origin.strip()]
@@ -26,7 +23,6 @@ else:
     ]
 CORS(app, resources={r"/api/*": {"origins": allowed_origins}})
 
-# Initialize model
 recommender = RecommenderSystem.load_model()
 
 API_KEY = os.environ.get('RECOMMENDER_API_KEY')
@@ -65,7 +61,6 @@ def recommend_user(user_id):
 
     recommendations = recommender.predict_user_products(user_id, limit)
 
-    # Cold-start fallback: if no recommendations, return popular products
     if not recommendations:
         recommendations = recommender.get_popular_products(limit)
 
@@ -123,6 +118,5 @@ def get_metrics():
     })
 
 if __name__ == '__main__':
-    # Run on port 8001 to match Laravel config
     port = int(os.environ.get('PORT', 8001))
     app.run(port=port, host='0.0.0.0')
